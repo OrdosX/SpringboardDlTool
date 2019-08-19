@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -9,18 +10,24 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func main() {
 	auth, host, port := initConf()
 	address := "http://" + host + ":" + port
-	url, path := initArg()
+	url, path, err := initArg()
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(0)
+	}
 
-	_, err := os.Stat("dl")
+	_, err = os.Stat("dl")
 	if os.IsNotExist(err) {
 		os.Mkdir("dl", os.ModeDir)
 	}
 
+	fmt.Println("服务器开始下载 ", path)
 	contentLength, err := placeOrder(auth, address, url, path)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -73,12 +80,67 @@ func initConf() (string, string, string) {
 * ./client.exe https://www.example.com/example.zip ex.zip
  */
 
-func initArg() (string, string) {
-	if len(os.Args) != 3 {
-		fmt.Println("参数错误！")
-		os.Exit(0)
+func initArg() (string, string, error) {
+	var url, path string
+	var err error
+
+	switch len(os.Args) {
+	case 3: //输入完整参数
+		url = os.Args[1]
+		path = os.Args[2]
+		err = nil
+	case 2: //只输入URL
+		s := strings.Split(os.Args[1], "/")
+		if s[len(s)-1] != "" {
+			url = os.Args[1]
+			path = s[len(s)-1]
+			err = nil
+		} else {
+			fmt.Print("无法自动识别文件名，请手动输入：")
+			scanner := bufio.NewScanner(os.Stdin)
+			if scanner.Scan() {
+				url = os.Args[1]
+				path = scanner.Text()
+				err = nil
+			} else {
+				url = ""
+				path = ""
+				err = errors.New("读取输入时出错！")
+			}
+		}
+	case 1: //运行时输入
+		fmt.Println("未指定文件地址，请手动输入：")
+		scanner := bufio.NewScanner(os.Stdin)
+		if scanner.Scan() {
+			url = scanner.Text()
+		} else {
+			url = ""
+			path = ""
+			err = errors.New("读取输入时出错！")
+			break
+		}
+		s := strings.Split(url, "/")
+		if s[len(s)-1] != "" {
+			path = s[len(s)-1]
+			err = nil
+		} else {
+			fmt.Print("无法自动识别文件名，请手动输入：")
+			scanner := bufio.NewScanner(os.Stdin)
+			if scanner.Scan() {
+				path = scanner.Text()
+				err = nil
+			} else {
+				url = ""
+				path = ""
+				err = errors.New("读取输入时出错！")
+			}
+		}
+	default:
+		url = ""
+		path = ""
+		err = errors.New("参数错误！")
 	}
-	return os.Args[1], os.Args[2]
+	return url, path, err
 }
 
 func placeOrder(auth string, address string, url string, path string) (int64, error) {
@@ -105,7 +167,7 @@ func placeOrder(auth string, address string, url string, path string) (int64, er
 
 	json.NewDecoder(data.Body).Decode(&resp)
 	if resp.Code != 200 {
-		return -1, errors.New(`服务端错误！\n状态码: ` + strconv.Itoa(resp.Code) + `\n报错信息： ` + resp.Message)
+		return -1, errors.New("服务端错误！\n状态码: " + strconv.Itoa(resp.Code) + "\n报错信息：" + resp.Message)
 	}
 	return resp.ContentLength, nil
 }

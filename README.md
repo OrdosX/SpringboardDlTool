@@ -30,13 +30,20 @@ port: 监听的端口
 
 安装流程及指令与服务端相同，只是将 `server` 换成 `client` ,并且config.json中 `host` 字段填服务器地址。
 
-下载时，输入以下指令：
+有三种使用方法：
+
+第一种，直接执行，然后输入下载地址并指定以什么文件名保存。
+
+第二种，自动判断文件名。如果无法判断，会要求输入。
 
 ```
-./client <URL> <要保存为的文件名>
+./client https://example.com/example.7z
+```
 
-例子：
-./client https://example.com/example.zip ex.zip
+第三种，用命令指定全部内容。
+
+```
+./client https://example.com/example.7z ex.7z
 ```
 
 完成后，在与程序同目录下的dl文件夹中可以找到下载的文件。
